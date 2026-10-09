@@ -1,0 +1,20 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://crm.businesstriage.com.br/api/webhooks/whatsapp?token=COLE_AQUI_O_TOKEN",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": { "timeout": 5000 }
+      },
+      "name": "Espelhar no CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 520],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {}
+}

@@ -1,0 +1,43 @@
+# /etc/nginx/snippets/triage-crm-locations.conf — rotas do Triage CRM
+# (incluído pelo site principal e pelos domínios próprios de clientes)
+access_log /var/log/nginx/triage-crm.access.log;
+error_log  /var/log/nginx/triage-crm.error.log warn;
+client_max_body_size 20m;
+limit_req_status 429;
+
+add_header X-Frame-Options SAMEORIGIN always;
+add_header X-Content-Type-Options nosniff always;
+add_header Referrer-Policy strict-origin-when-cross-origin always;
+add_header Strict-Transport-Security "max-age=31536000" always;
+
+# Uploads servidos direto do disco do CRM (somente leitura, nunca executados)
+location /uploads/ {
+  alias /var/lib/triage-crm/uploads/;
+  add_header X-Content-Type-Options nosniff always;
+  add_header Content-Security-Policy "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'" always;
+  expires 30d;
+  try_files $uri =404;
+}
+
+location = /api/auth/login {
+  limit_req zone=triagecrm_login burst=5 nodelay;
+  proxy_pass http://127.0.0.1:__PORT__;
+  include /etc/nginx/snippets/triage-crm-proxy.conf;
+}
+
+location /socket.io/ {
+  proxy_pass http://127.0.0.1:__PORT__;
+  include /etc/nginx/snippets/triage-crm-proxy.conf;
+  proxy_read_timeout 3600s;
+}
+
+location /api/ {
+  limit_req zone=triagecrm_api burst=60 nodelay;
+  proxy_pass http://127.0.0.1:__PORT__;
+  include /etc/nginx/snippets/triage-crm-proxy.conf;
+}
+
+location / {
+  proxy_pass http://127.0.0.1:__PORT__;
+  include /etc/nginx/snippets/triage-crm-proxy.conf;
+}

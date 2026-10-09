@@ -1,0 +1,66 @@
+# /etc/systemd/system/triage-crm.service
+# Processo do CRM isolado: usuário próprio, sistema de arquivos somente-leitura,
+# sem acesso a /home, /root, /var/www (outros sites) e sem privilégios extras.
+# Não usa o PM2 das outras aplicações — nada do que roda lá é afetado.
+[Unit]
+Description=Triage CRM (Business Triage) — Next.js + Socket.io + worker
+After=network-online.target __PG_UNIT__
+Requires=__PG_UNIT__
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=triagecrm
+Group=triagecrm
+WorkingDirectory=/opt/triage-crm/app
+EnvironmentFile=/etc/triage-crm/env
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=HOME=/opt/triage-crm
+Environment=PATH=/opt/triage-crm/runtime/node/bin:/usr/bin:/bin
+ExecStart=/opt/triage-crm/runtime/node/bin/node node_modules/.bin/tsx server.ts
+Restart=always
+RestartSec=5
+UMask=0027
+
+# ── Limites de recurso (não deixa o CRM sufocar os outros sites) ──
+MemoryMax=1G
+MemoryHigh=850M
+CPUWeight=80
+TasksMax=256
+LimitNOFILE=65536
+
+# ── Sandbox ──
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/triage-crm
+ReadWritePaths=-/opt/triage-crm/app/.next/cache
+InaccessiblePaths=-/var/www -/srv -/etc/letsencrypt -/etc/nginx
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=triage-crm
+
+[Install]
+WantedBy=multi-user.target

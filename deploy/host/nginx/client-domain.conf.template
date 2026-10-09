@@ -1,0 +1,18 @@
+# /etc/nginx/sites-available/triage-crm-__CLIENT__  (gerado por deploy/add-domain.sh)
+# Domínio próprio de um cliente white-label apontando para o Triage CRM.
+server {
+  listen 80;
+  listen [::]:80;
+  server_name __CLIENT__;
+  location /.well-known/acme-challenge/ { root /var/www/letsencrypt; }
+  location / { return 301 https://$host$request_uri; }
+}
+
+server {
+  listen 443 ssl http2;
+  listen [::]:443 ssl http2;
+  server_name __CLIENT__;
+  ssl_certificate     /etc/letsencrypt/live/__CLIENT__/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/__CLIENT__/privkey.pem;
+  include /etc/nginx/snippets/triage-crm-locations.conf;
+}
