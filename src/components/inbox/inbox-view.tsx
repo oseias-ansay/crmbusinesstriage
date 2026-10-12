@@ -199,7 +199,10 @@ function ChatPane({ conv, me }: { conv: Conv; me: string }) {
   const [recording, setRecording] = useState<MediaRecorder | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [msgs.length]);
+  // chaves: no Chrome novo scrollIntoView devolve uma Promise, e o React a trataria como função de limpeza
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs.length]);
 
   useSocketEvent(
     "conversation:typing",

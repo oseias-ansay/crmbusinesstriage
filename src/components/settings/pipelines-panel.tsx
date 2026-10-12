@@ -137,7 +137,9 @@ function StageRow({ stage, first, last, aiOn, onMove, onSave, onDelete }: {
 }) {
   const [s, setS] = useState(stage);
   const [open, setOpen] = useState(false);
-  useEffect(() => setS(stage), [stage]);
+  useEffect(() => {
+    setS(stage);
+  }, [stage]);
   const dirty = JSON.stringify(s) !== JSON.stringify(stage);
   const hasJourney = !!(stage.autoMessage || stage.aiCriteria || stage.metaEvent);
   return (
