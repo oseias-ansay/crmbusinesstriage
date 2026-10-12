@@ -65,16 +65,16 @@ export function CopilotPanel({ dealId, hasWhatsapp }: { dealId: string; hasWhats
           </p>
         )}
         {data.messages.map((m) => (m.role === "user" ? (
-          <div key={m.id} className="ml-10 rounded-xl rounded-br-sm bg-primary px-3 py-2 text-sm text-white">
+          <div key={m.id} className="ml-10 rounded-xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">
             {m.content}
-            {m.userName && <p className="mt-0.5 text-[10px] text-white/60">{m.userName}</p>}
+            {m.userName && <p className="mt-0.5 text-[10px] text-primary-foreground/60">{m.userName}</p>}
           </div>
         ) : (
           <Answer key={m.id} m={m} cite={cite} dealId={dealId} hasWhatsapp={hasWhatsapp} />
         )))}
         {pending && (
           <>
-            <div className="ml-10 rounded-xl rounded-br-sm bg-primary px-3 py-2 text-sm text-white">{pending}</div>
+            <div className="ml-10 rounded-xl rounded-br-sm bg-primary px-3 py-2 text-sm text-primary-foreground">{pending}</div>
             <div className="mr-10 flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-500"><Sparkles size={14} className="animate-pulse text-secondary" /> Consultando a base e a conversa…</div>
           </>
         )}
