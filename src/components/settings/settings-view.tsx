@@ -8,6 +8,7 @@ import { TeamPanel } from "./team-panel";
 import { PipelinesPanel } from "./pipelines-panel";
 import { IntegrationsPanel } from "./integrations-panel";
 import { TrackingPanel } from "./tracking-panel";
+import { KnowledgePanel } from "./knowledge-panel";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
@@ -18,7 +19,11 @@ type Conn = { id: string; channel: string; name: string; externalId: string; isA
 export function SettingsView() {
   const [tabValue, setTabValue] = useState("brand");
   // volta do Google (OAuth) → abre direto em Integrações
-  useEffect(() => { if (new URLSearchParams(window.location.search).get("google")) setTabValue("integrations"); }, []);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("google")) setTabValue("integrations");
+    else if (q.get("tab")) setTabValue(q.get("tab")!);
+  }, []);
   const tab = "rounded-md px-4 py-1.5 text-sm data-[state=active]:bg-white data-[state=active]:font-medium data-[state=active]:shadow-sm";
   return (
     <div className="space-y-4 p-6">
@@ -32,6 +37,7 @@ export function SettingsView() {
             <Tabs.Trigger value="channels" className={tab}>Canais</Tabs.Trigger>
             <Tabs.Trigger value="integrations" className={tab}>Integrações</Tabs.Trigger>
             <Tabs.Trigger value="tracking" className={tab}>Rastreamento</Tabs.Trigger>
+            <Tabs.Trigger value="knowledge" className={tab}>Base de conhecimento</Tabs.Trigger>
           </Tabs.List>
         </div>
         <Tabs.Content value="brand" className="mt-4"><BrandingForm /></Tabs.Content>
@@ -40,6 +46,7 @@ export function SettingsView() {
         <Tabs.Content value="channels" className="mt-4"><Channels /></Tabs.Content>
         <Tabs.Content value="integrations" className="mt-4"><IntegrationsPanel /></Tabs.Content>
         <Tabs.Content value="tracking" className="mt-4"><TrackingPanel /></Tabs.Content>
+        <Tabs.Content value="knowledge" className="mt-4"><KnowledgePanel /></Tabs.Content>
       </Tabs.Root>
     </div>
   );

@@ -8,7 +8,8 @@ import { useState } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, Circle, FileText, Paperclip, Pencil, ThumbsDown, Trophy } from "lucide-react";
+import { CheckCircle2, Circle, FileText, Paperclip, Pencil, Sparkles, ThumbsDown, Trophy } from "lucide-react";
+import { CopilotPanel } from "./copilot-panel";
 import { EditDealForm } from "./edit-deal-form";
 import Link from "next/link";
 import { api } from "@/lib/fetcher";
@@ -116,6 +117,7 @@ export function DealDrawer({ dealId, onClose }: { dealId: string | null; onClose
           <Tabs.Root defaultValue="timeline">
             <Tabs.List className="flex border-b">
               <Tabs.Trigger value="timeline" className={tabCls}>Linha do tempo</Tabs.Trigger>
+              <Tabs.Trigger value="copilot" className={cn(tabCls, "flex items-center gap-1")}><Sparkles size={13} className="text-secondary" /> Copiloto</Tabs.Trigger>
               <Tabs.Trigger value="notes" className={tabCls}>Notas ({d.notes.length})</Tabs.Trigger>
               <Tabs.Trigger value="tasks" className={tabCls}>Tarefas ({d.tasks.filter((t) => t.status === "PENDING").length})</Tabs.Trigger>
               <Tabs.Trigger value="files" className={tabCls}>Arquivos ({d.attachments.length})</Tabs.Trigger>
@@ -134,6 +136,10 @@ export function DealDrawer({ dealId, onClose }: { dealId: string | null; onClose
                     </li>
                   ))}
               </ol>
+            </Tabs.Content>
+
+            <Tabs.Content value="copilot">
+              <CopilotPanel dealId={d.id} hasWhatsapp={d.messages.some((m) => m.channel === "WHATSAPP")} />
             </Tabs.Content>
 
             <Tabs.Content value="notes" className="space-y-3 pt-4">

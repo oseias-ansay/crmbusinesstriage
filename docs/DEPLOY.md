@@ -213,6 +213,14 @@ cd /opt/apps/triage-crm && docker compose down -v && rm -f /etc/cron.d/triage-cr
   ajustado; depois marque Enviado/Assinado. Modelos editáveis em **Modelos** (variáveis `{{cliente.razaoSocial}}` etc.).
 - Dados da contratada (sua empresa) em Configurações → Integrações. **Revise o modelo padrão com seu advogado.**
 
+## 7.1 Copiloto de vendas (IA no card)
+
+- **Base de conhecimento:** Configurações → Base de conhecimento. Documentos por categoria (processo de vendas, objeções, preços, produtos, políticas, FAQ), digitados ou importados de PDF/Word. Só os **ativos** entram nas respostas. "Criar roteiros para preencher" gera 4 modelos desativados.
+- **No card:** aba **Copiloto**. O vendedor pergunta ou usa os atalhos (próxima resposta, quebrar objeção, resumir, qual oferta). A IA usa a base + dados do lead (etapa, valor, respostas da qualificação, tags, notas, últimas mensagens) e cita as fontes [n].
+- **Segurança:** não informa preço/condição fora da base; nada vai ao cliente sozinho — a mensagem sugerida é editável e só é enviada ao clicar "Enviar no WhatsApp" (fica registrado na linha do tempo).
+- **Custo:** usa a chave e o limite diário de Integrações → IA (mesmo contador da IA do funil). Base de até ~120 mil caracteres vai inteira, em cache; acima disso, só os trechos relacionados à pergunta.
+- Quem gerencia a base: Gerente ou Admin. Todos os usuários usam o Copiloto.
+
 ## 8. Canais
 
 - **WhatsApp — número exclusivo do CRM:** em Configurações → Canais, conecte o nome da instância e

@@ -36,6 +36,13 @@
       "when": 1791482543781,
       "tag": "0004_google_calendar",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791822136840,
+      "tag": "0005_copilot",
+      "breakpoints": true
     }
   ]
 }

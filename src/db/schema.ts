@@ -824,6 +824,48 @@ export const liveRegistrations = pgTable(
   (t) => [uniqueIndex().on(t.liveId, t.contactId)],
 );
 
+// ───────────────────────────── COPILOTO DE VENDAS ─────────────────────────────
+
+/**
+ * Base de conhecimento comercial do tenant (procedimentos de venda, objeções,
+ * tabela de preços, FAQ…). É o que o Copiloto do card usa para responder.
+ */
+export const knowledgeDocs = pgTable(
+  "knowledge_docs",
+  {
+    id: id(),
+    tenantId: tenantRef(),
+    title: text().notNull(),
+    category: text().notNull().default("geral"), // processo | objecoes | precos | produtos | politicas | faq | geral
+    content: text().notNull(),
+    sourceFile: text(), // nome do arquivo de origem, quando importado de PDF/Word
+    isActive: boolean().notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.tenantId)],
+);
+
+export type CopilotMeta = { fontes?: number[]; tokensIn?: number; tokensOut?: number; cacheRead?: number; action?: string; sentToWhatsapp?: boolean };
+
+/** Conversa do vendedor com o Copiloto, por negócio (histórico fica no card). */
+export const copilotMessages = pgTable(
+  "copilot_messages",
+  {
+    id: id(),
+    tenantId: tenantRef(),
+    dealId: uuid()
+      .notNull()
+      .references(() => deals.id, { onDelete: "cascade" }),
+    userId: uuid().references(() => users.id, { onDelete: "set null" }),
+    role: text().notNull(), // user | assistant
+    content: text().notNull(),
+    meta: jsonb().$type<CopilotMeta>(),
+    createdAt: createdAt(),
+  },
+  (t) => [index().on(t.tenantId, t.dealId, t.createdAt)],
+);
+
 export const notifications = pgTable(
   "notifications",
   {

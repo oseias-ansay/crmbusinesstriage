@@ -30,6 +30,7 @@
     "drizzle-orm": "^0.45.3",
     "jose": "^5.9.6",
     "lucide-react": "^0.468.0",
+    "mammoth": "^1.8.0",
     "next": "15.5.27",
     "nodemailer": "^6.9.16",
     "papaparse": "^5.4.1",
@@ -42,6 +43,7 @@
     "socket.io-client": "^4.8.1",
     "tailwind-merge": "^2.6.0",
     "tsx": "^4.19.2",
+    "unpdf": "^0.12.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
