@@ -32,9 +32,9 @@ export function Sidebar({ tenant, isSuperAdmin, canManage }: { tenant: { name: s
 
   return (
     <aside className="flex w-16 shrink-0 flex-col bg-primary p-3 lg:w-60">
-      <div className="mb-6 flex min-h-10 items-center px-1">
+      <div className="mb-6 flex min-h-10 items-center justify-center px-1">
         {tenant.logoUrl ? (
-          <img src={tenant.logoUrl} alt={tenant.name} className="h-auto max-h-14 w-full object-contain object-left" />
+          <img src={tenant.logoUrl} alt={tenant.name} className="h-auto max-h-28 w-auto max-w-full object-contain" />
         ) : (
           <span className="truncate text-lg font-bold text-primary-foreground">{tenant.name}</span>
         )}
