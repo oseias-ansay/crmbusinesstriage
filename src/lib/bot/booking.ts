@@ -130,6 +130,7 @@ export async function answerSlot(
       runAt: at,
       payload: {
         contactId: contact.id,
+        dealId: deal?.id ?? null,
         requireTaskId: taskId,
         text: `Lembrete: seu atendimento com a Business Triage é hoje, às ${hora}.${link ? ` Link da videochamada: ${link}` : ""} Se precisar remarcar, é só responder aqui.`,
       },
@@ -193,7 +194,7 @@ export async function answerLive(
     const soon = new Date(live.startsAt.getTime() - 30 * 60_000);
     if (soon.getTime() > Date.now()) jobs.push({ at: soon, text: `A live "${live.title}" começa em 30 minutos.${live.link ? ` Link: ${live.link}` : ""}` });
     for (const j of jobs) {
-      await tx.insert(scheduledJobs).values({ tenantId, kind: "CONTACT_MESSAGE", runAt: j.at, payload: { contactId: contact.id, requireLiveRegistrationId: reg.id, text: j.text } });
+      await tx.insert(scheduledJobs).values({ tenantId, kind: "CONTACT_MESSAGE", runAt: j.at, payload: { contactId: contact.id, dealId: deal?.id ?? null, requireLiveRegistrationId: reg.id, text: j.text } });
     }
   }
   const text = renderTemplate(d.confirmText, { ...ctx.vars, live: { titulo: live.title, data: quando, link: live.link ?? "", descricao: live.description ?? "" } });

@@ -11,6 +11,7 @@ import { deliverToChannel } from "@/lib/channels";
 import { emitToTenant } from "@/lib/realtime";
 import { runBot } from "@/lib/bot/engine";
 import { createDeal, defaultPipelineFirstStage } from "./deals";
+import { resolveRoute } from "./routing";
 import { fireTrigger } from "@/lib/automation/engine";
 
 type Outbound = {
@@ -117,7 +118,7 @@ async function recordOutboundEcho(i: Inbound) {
     let [conv] = await tx
       .select()
       .from(conversations)
-      .where(and(eq(conversations.contactId, contact.id), eq(conversations.channel, i.channel)))
+      .where(and(eq(conversations.contactId, contact.id), eq(conversations.channel, i.channel), i.connectionId ? eq(conversations.connectionId, i.connectionId) : undefined))
       .orderBy(sql`${conversations.lastMessageAt} desc`)
       .limit(1);
     if (!conv) {
@@ -194,22 +195,24 @@ export async function handleInbound(i: Inbound) {
     let [conv] = await tx
       .select()
       .from(conversations)
-      .where(and(eq(conversations.contactId, contact.id), eq(conversations.channel, i.channel)))
+      .where(and(eq(conversations.contactId, contact.id), eq(conversations.channel, i.channel), i.connectionId ? eq(conversations.connectionId, i.connectionId) : undefined))
       .orderBy(sql`${conversations.lastMessageAt} desc`)
       .limit(1);
 
-    // 4) Lead novo → cria negócio na 1ª etapa do pipeline padrão
+    // 4) Lead novo → cria negócio na 1ª etapa do funil do roteamento do número
+    //    (ou do funil padrão, quando o número não tem roteamento)
     let newDealId: string | null = null;
     if (!conv) {
+      const routeTo = await resolveRoute(tx, i.connectionId, i.content, i.attribution);
       let dealId: string | null = null;
       const [openDeal] = await tx
         .select({ id: deals.id })
         .from(deals)
-        .where(and(eq(deals.contactId, contact.id), ne(deals.status, "LOST")))
+        .where(and(eq(deals.contactId, contact.id), ne(deals.status, "LOST"), routeTo.pipelineId ? eq(deals.pipelineId, routeTo.pipelineId) : undefined))
         .limit(1);
       dealId = openDeal?.id ?? null;
       if (!dealId) {
-        const target = await defaultPipelineFirstStage(tx, i.tenantId);
+        const target = routeTo.pipelineId && routeTo.stageId ? { pipelineId: routeTo.pipelineId, stageId: routeTo.stageId } : await defaultPipelineFirstStage(tx, i.tenantId);
         if (target) {
           const d = await createDeal(tx, i.tenantId, null, {
             title: `Lead ${i.channel === "WHATSAPP" ? "WhatsApp" : i.channel === "INSTAGRAM" ? "Instagram" : "E-mail"} — ${contact.name}`,
@@ -225,7 +228,16 @@ export async function handleInbound(i: Inbound) {
       }
       [conv] = await tx
         .insert(conversations)
-        .values({ tenantId: i.tenantId, contactId: contact.id, dealId, connectionId: i.connectionId ?? null, channel: i.channel })
+        .values({
+          tenantId: i.tenantId,
+          contactId: contact.id,
+          dealId,
+          connectionId: i.connectionId ?? null,
+          channel: i.channel,
+          botFlowId: routeTo.botFlowId ?? null,
+          // roteamento "sem robô": a conversa já nasce com o robô encerrado
+          botState: routeTo.noBot ? { flowId: "", nodeId: "", vars: {}, done: true } : null,
+        })
         .returning();
     }
 

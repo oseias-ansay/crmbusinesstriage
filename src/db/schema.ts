@@ -29,6 +29,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 // ───────────────────────────── ENUMS ─────────────────────────────
@@ -420,11 +421,21 @@ export const channelConnections = pgTable(
     name: text().notNull(), // "WhatsApp Comercial"
     externalId: text().notNull(), // instância Evolution / page id Meta / e-mail
     config: jsonb().$type<Record<string, string>>().notNull().default({}),
+    routing: jsonb().$type<ConnRouting>().notNull().default({}),
     isActive: boolean().notNull().default(true),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex().on(t.channel, t.externalId), index().on(t.tenantId)],
 );
+
+/**
+ * Para onde vai o lead que chega por esta conexão (ex.: número da consultoria
+ * → funil Vendas + robô de qualificação; número do CRM → funil Venda de CRM).
+ * `rules` são exceções por palavra-chave (mensagem pré-preenchida do anúncio,
+ * título do anúncio, link ou id do anúncio). botFlowId "none" = sem robô.
+ */
+export type RouteTarget = { pipelineId?: string; botFlowId?: string };
+export type ConnRouting = RouteTarget & { rules?: (RouteTarget & { match: string })[] };
 
 export type BotState = { flowId: string; nodeId: string; vars: Record<string, string>; done?: boolean };
 
@@ -445,6 +456,8 @@ export const conversations = pgTable(
     lastMessageAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     lastMessagePreview: text(),
     botState: jsonb().$type<BotState | null>(),
+    // robô escolhido pelo roteamento da conexão (null = robô ativo padrão)
+    botFlowId: uuid().references((): AnyPgColumn => botFlows.id, { onDelete: "set null" }),
     createdAt: createdAt(),
   },
   (t) => [
@@ -839,6 +852,7 @@ export const knowledgeDocs = pgTable(
     category: text().notNull().default("geral"), // processo | objecoes | precos | produtos | politicas | faq | geral
     content: text().notNull(),
     sourceFile: text(), // nome do arquivo de origem, quando importado de PDF/Word
+    pipelineId: uuid().references(() => pipelines.id, { onDelete: "set null" }), // null = vale para todos os funis
     isActive: boolean().notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

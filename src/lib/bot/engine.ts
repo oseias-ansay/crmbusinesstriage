@@ -19,6 +19,12 @@ import { answerLive, answerSlot, offerLives, offerSlots } from "./booking";
 /** Gatilhos que o robô gerou; disparados pelo chamador DEPOIS do commit. */
 export type BotTrigger = { type: "DEAL_STAGE_CHANGED"; ctx: { dealId: string; stageId: string; pipelineId: string } };
 
+/** Campo do contato onde este robô grava a qualificação. */
+export function qualifyField(flow: BotFlowDef) {
+  const q = flow?.nodes?.find((n) => n.type === "qualify");
+  return (q?.type === "qualify" && q.data.field) || "qualificacao";
+}
+
 const MAX_STEPS = 25; // proteção contra loops no fluxo
 
 export async function runBot(
@@ -38,15 +44,20 @@ export async function runBot(
     const [f] = await tx.select().from(botFlows).where(eq(botFlows.id, state.flowId)).limit(1);
     flow = (f?.flow as BotFlowDef) ?? null;
   } else {
-    const [f] = await tx
-      .select()
-      .from(botFlows)
-      .where(and(eq(botFlows.tenantId, conv.tenantId), eq(botFlows.channel, conv.channel), eq(botFlows.isActive, true)))
-      .limit(1);
+    // Robô escolhido pelo roteamento do número; sem roteamento, o robô ativo padrão
+    const [f] = conv.botFlowId
+      ? await tx.select().from(botFlows).where(and(eq(botFlows.id, conv.botFlowId), eq(botFlows.tenantId, conv.tenantId))).limit(1)
+      : await tx
+          .select()
+          .from(botFlows)
+          .where(and(eq(botFlows.tenantId, conv.tenantId), eq(botFlows.channel, conv.channel), eq(botFlows.isActive, true)))
+          .limit(1);
     if (!f) return { replies, handedOff: false, triggers };
-    // Lead já qualificado (ex.: veio do diagnóstico do site) não passa de novo pela triagem
+    // Lead já qualificado NESTE robô (ex.: veio do diagnóstico do site) não passa de novo pela triagem.
+    // Cada robô grava a qualificação no seu próprio campo (padrão "qualificacao").
+    const qField = qualifyField(f.flow as BotFlowDef);
     const [c0] = await tx.select({ cf: contacts.customFields }).from(contacts).where(eq(contacts.id, conv.contactId)).limit(1);
-    if (c0?.cf && (c0.cf as Record<string, unknown>).qualificacao) return { replies, handedOff: false, triggers };
+    if (c0?.cf && (c0.cf as Record<string, unknown>)[qField]) return { replies, handedOff: false, triggers };
     flow = f.flow as BotFlowDef;
     state = { flowId: f.id, nodeId: flow.startNodeId, vars: {} };
     incomingText = ""; // primeira mensagem só inicia o fluxo
@@ -136,10 +147,10 @@ export async function runBot(
       case "qualify": {
         const d = node.data;
         const r = evaluateQualify(d, state.vars);
-        const tagNames = r.qualified ? ["Qualificado", ...(r.tier ? [r.tier] : [])] : ["Não qualificado"];
+        const tagNames = [...(r.qualified ? ["Qualificado", ...(r.tier ? [r.tier] : [])] : ["Não qualificado"]), ...(d.extraTags ?? [])];
         const tagRows = await ensureTags(tx, conv.tenantId, tagNames);
         for (const t of tagRows) await tx.insert(contactTags).values({ tenantId: conv.tenantId, contactId: contact.id, tagId: t.id }).onConflictDoNothing();
-        const cf = { ...(contact.customFields ?? {}), ...Object.fromEntries(Object.entries(state.vars).filter(([k]) => !k.startsWith("_"))), qualificacao: r.qualified ? "Qualificado" : "Não qualificado", ...(r.tier && { porte: r.tier }) };
+        const cf = { ...(contact.customFields ?? {}), ...Object.fromEntries(Object.entries(state.vars).filter(([k]) => !k.startsWith("_"))), [d.field || "qualificacao"]: r.qualified ? "Qualificado" : "Não qualificado", ...(r.tier && { porte: r.tier }) };
         [contact] = await tx.update(contacts).set({ customFields: cf }).where(eq(contacts.id, contact.id)).returning();
 
         const [deal] = conv.dealId ? await tx.select().from(deals).where(eq(deals.id, conv.dealId)).limit(1) : [];

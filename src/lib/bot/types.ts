@@ -139,6 +139,8 @@ export type QualifyData = {
   priorityTiers?: string[]; // portes que vão para um responsável fixo
   priorityUserId?: string;
   followUpDays?: number; // tarefa de retomar contato com o não qualificado
+  field?: string; // campo do contato com o resultado (padrão "qualificacao"); robôs diferentes usam campos diferentes
+  extraTags?: string[]; // tags a mais aplicadas ao lead (ex.: "Interesse CRM")
 };
 
 /** Avalia as regras (mesma função no servidor e no simulador). */

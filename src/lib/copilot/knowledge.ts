@@ -23,6 +23,7 @@ export const docSchema = z.object({
   category: z.enum(Object.keys(CATEGORIES) as [string, ...string[]]).default("geral"),
   content: z.string().trim().min(1).max(300_000),
   isActive: z.boolean().optional(),
+  pipelineId: z.string().uuid().nullable().optional(), // null = vale para todos os funis
 });
 
 export const FULL_LIMIT = 120_000; // caracteres enviados por inteiro

@@ -221,6 +221,15 @@ cd /opt/apps/triage-crm && docker compose down -v && rm -f /etc/cron.d/triage-cr
 - **Custo:** usa a chave e o limite diário de Integrações → IA (mesmo contador da IA do funil). Base de até ~120 mil caracteres vai inteira, em cache; acima disso, só os trechos relacionados à pergunta.
 - Quem gerencia a base: Gerente ou Admin. Todos os usuários usam o Copiloto.
 
+## 7.2 Vários números de WhatsApp (ex.: consultoria × venda de CRM)
+
+- Crie a instância nova na Evolution (o webhook global já entrega ao CRM) e cadastre-a em **Configurações → Canais** com o nome exato da instância.
+- Em cada número, **"Para onde vai o lead novo"**: funil de entrada + robô que atende. Sem isso, vale o funil padrão e o robô ativo.
+- **Exceções por palavra-chave**: termos procurados na 1ª mensagem (mensagem pré-preenchida do anúncio), no título/link do anúncio ou o ID do anúncio (8+ dígitos) → outro funil/robô.
+- **"Usar este número para Venda de CRM"** cria o funil "Venda de CRM" (8 etapas), o robô de qualificação de CRM (demonstração online de 30 min) e liga ao número.
+- Cada número tem a sua conversa; respostas, lembretes e mensagens de etapa saem pelo número do negócio. No Inbox, filtro "Todos os números".
+- Base de conhecimento: campo **"Usar no funil"** — o Copiloto de um card só usa documentos do funil dele (ou de todos).
+
 ## 8. Canais
 
 - **WhatsApp — número exclusivo do CRM:** em Configurações → Canais, conecte o nome da instância e

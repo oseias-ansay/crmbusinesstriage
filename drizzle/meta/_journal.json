@@ -43,6 +43,13 @@
       "when": 1791822136840,
       "tag": "0005_copilot",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791918064954,
+      "tag": "0006_routing",
+      "breakpoints": true
     }
   ]
 }

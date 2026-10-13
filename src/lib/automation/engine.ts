@@ -13,6 +13,7 @@
  *  Proteção contra loop: MOVE_STAGE dispara DEAL_STAGE_CHANGED de novo;
  *  limitamos a profundidade em MAX_DEPTH.
  */
+import { pickWhatsappConversation } from "@/lib/services/routing";
 import { and, eq, sql } from "drizzle-orm";
 import { withTenant, type Tx } from "@/db";
 import {
@@ -148,11 +149,7 @@ async function perform(
     case "SEND_WHATSAPP": {
       if (!v.contact?.phone) return { skipped: "contato sem telefone" };
       // Reaproveita a conversa de WhatsApp do contato, ou cria uma
-      let [conv] = await tx
-        .select()
-        .from(conversations)
-        .where(and(eq(conversations.contactId, v.contact.id), eq(conversations.channel, "WHATSAPP")))
-        .limit(1);
+      let conv = await pickWhatsappConversation(tx, v.contact.id, v.deal?.id);
       if (!conv) {
         [conv] = await tx
           .insert(conversations)

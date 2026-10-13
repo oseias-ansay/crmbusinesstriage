@@ -8,6 +8,7 @@
  *  - Negócio ganho: evento "Purchase" (valor do negócio) e ficha de cliente.
  *  - Mensagem recebida: agenda a análise da IA (se ligada no funil).
  */
+import { pickWhatsappConversation } from "@/lib/services/routing";
 import { and, eq, sql } from "drizzle-orm";
 import { withTenant, type Tx } from "@/db";
 import { activities, contacts, conversations, deals, scheduledJobs, stages, tenants, users } from "@/db/schema";
@@ -104,11 +105,7 @@ export async function sendStageMessage(tx: Tx, tenantId: string, dealId: string,
   }).trim();
   if (!text) return { skipped: "mensagem vazia" };
 
-  let [conv] = await tx
-    .select()
-    .from(conversations)
-    .where(and(eq(conversations.contactId, row.contact.id), eq(conversations.channel, "WHATSAPP")))
-    .limit(1);
+  let conv = await pickWhatsappConversation(tx, row.contact.id, dealId);
   if (!conv) {
     [conv] = await tx.insert(conversations).values({ tenantId, contactId: row.contact.id, dealId, channel: "WHATSAPP" }).returning();
   }

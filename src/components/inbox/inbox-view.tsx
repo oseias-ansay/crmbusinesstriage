@@ -25,6 +25,7 @@ type Channel = "WHATSAPP" | "INSTAGRAM" | "EMAIL" | "INTERNAL" | "WEBCHAT";
 type Conv = {
   id: string; channel: Channel; status: "OPEN" | "PENDING" | "RESOLVED"; unreadCount: number; lastMessageAt: string; lastMessagePreview: string | null;
   assignedToId: string | null; assignedToName: string | null; dealId: string | null; dealTitle: string | null;
+  connectionId: string | null; connectionName: string | null;
   contact: { id: string; name: string; phone: string | null; email: string | null };
 };
 type Msg = {
@@ -52,14 +53,21 @@ export function InboxView({ me }: { me: string }) {
   const socket = useSocket();
   const [tab, setTab] = useState<"all" | "mine" | "queue">("all");
   const [channel, setChannel] = useState("");
+  const [connection, setConnection] = useState("");
   const [status, setStatus] = useState("OPEN");
   const [q, setQ] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const qs = new URLSearchParams({ status, ...(channel && { channel }), ...(q && { q }), ...(tab === "mine" && { mine: "1" }), ...(tab === "queue" && { unassigned: "1" }) }).toString();
+  const qs = new URLSearchParams({ status, ...(channel && { channel }), ...(connection && { connection }), ...(q && { q }), ...(tab === "mine" && { mine: "1" }), ...(tab === "queue" && { unassigned: "1" }) }).toString();
   const { data: convs = [] } = useQuery({ queryKey: ["conversations", qs], queryFn: () => api<Conv[]>(`/api/conversations?${qs}`) });
   const { data: team = [] } = useQuery({ queryKey: ["users"], queryFn: () => api<TeamUser[]>("/api/users") });
   const active = convs.find((c) => c.id === activeId) ?? null;
+  // números (conexões) já vistos na lista — alimenta o filtro "Todos os números"
+  const [numbers, setNumbers] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const found = Object.fromEntries(convs.filter((c) => c.connectionId && c.connectionName).map((c) => [c.connectionId!, c.connectionName!]));
+    if (Object.keys(found).some((k) => !numbers[k])) setNumbers((n) => ({ ...n, ...found }));
+  }, [convs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("c");
@@ -120,6 +128,12 @@ export function InboxView({ me }: { me: string }) {
               <option value="OPEN">Abertas</option><option value="PENDING">Pendentes</option><option value="RESOLVED">Resolvidas</option><option value="ALL">Todas</option>
             </Select>
           </div>
+          {Object.keys(numbers).length > 1 && (
+            <Select className="h-8 w-full text-xs" value={connection} onChange={(e) => setConnection(e.target.value)}>
+              <option value="">Todos os números</option>
+              {Object.entries(numbers).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            </Select>
+          )}
         </div>
         <ul className="scroll-thin flex-1 overflow-y-auto">
           {convs.map((c) => (
@@ -136,7 +150,10 @@ export function InboxView({ me }: { me: string }) {
                     <p className="truncate text-xs text-slate-500">{c.lastMessagePreview ?? "…"}</p>
                     {c.unreadCount > 0 && <span className="ml-auto rounded-full bg-secondary px-1.5 text-[10px] font-bold text-secondary-foreground">{c.unreadCount}</span>}
                   </div>
-                  {!c.assignedToId && <span className="text-[10px] font-medium uppercase text-amber-600">na fila</span>}
+                  <div className="flex gap-2">
+                    {!c.assignedToId && <span className="text-[10px] font-medium uppercase text-amber-600">na fila</span>}
+                    {Object.keys(numbers).length > 1 && c.connectionName && <span className="truncate text-[10px] text-slate-400">{c.connectionName}</span>}
+                  </div>
                 </div>
               </button>
             </li>

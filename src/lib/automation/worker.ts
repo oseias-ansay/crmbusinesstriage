@@ -6,6 +6,7 @@
  * Usa FOR UPDATE SKIP LOCKED → seguro mesmo com várias instâncias.
  * Em escala maior, troque por BullMQ + Redis.
  */
+import { pickWhatsappConversation } from "@/lib/services/routing";
 import { and, eq, isNull, lte, sql } from "drizzle-orm";
 import { withAdmin } from "@/db";
 import { scheduledJobs, tasks, users, tenants, type AutomationAction } from "@/db/schema";
@@ -19,7 +20,7 @@ import { processConversions } from "@/lib/meta/capi";
 import { runAiClassify } from "@/lib/journey/ai";
 import { sendStageMessage } from "@/lib/journey/hooks";
 
-type ContactMessage = { contactId: string; text: string; requireTaskId?: string; requireLiveRegistrationId?: string };
+type ContactMessage = { contactId: string; dealId?: string | null; text: string; requireTaskId?: string; requireLiveRegistrationId?: string };
 
 /** Lembrete ao contato pelo WhatsApp (só se a reunião/inscrição ainda existir). */
 async function sendContactMessage(tx: Tx, tenantId: string, p: ContactMessage) {
@@ -31,11 +32,7 @@ async function sendContactMessage(tx: Tx, tenantId: string, p: ContactMessage) {
     const [r] = await tx.select({ id: liveRegistrations.id }).from(liveRegistrations).where(eq(liveRegistrations.id, p.requireLiveRegistrationId)).limit(1);
     if (!r) return;
   }
-  const [conv] = await tx
-    .select()
-    .from(conversations)
-    .where(and(eq(conversations.contactId, p.contactId), eq(conversations.channel, "WHATSAPP")))
-    .limit(1);
+  const conv = await pickWhatsappConversation(tx, p.contactId, p.dealId);
   if (!conv) return;
   await sendOutbound(tx, { tenantId, conversationId: conv.id, senderType: "BOT", content: p.text });
 }

@@ -13,20 +13,20 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-type Doc = { id: string; title: string; category: string; content: string; sourceFile: string | null; isActive: boolean; updatedAt: string };
-type Data = { docs: Doc[]; categories: Record<string, string>; fullLimit: number };
+type Doc = { id: string; title: string; category: string; content: string; sourceFile: string | null; isActive: boolean; updatedAt: string; pipelineId: string | null };
+type Data = { docs: Doc[]; categories: Record<string, string>; fullLimit: number; pipelines: { id: string; name: string }[] };
 
 export function KnowledgePanel() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["knowledge"], queryFn: () => api<Data>("/api/knowledge") });
   const [sel, setSel] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: "", category: "geral", content: "", isActive: true });
+  const [form, setForm] = useState<{ title: string; category: string; content: string; isActive: boolean; pipelineId: string | null }>({ title: "", category: "geral", content: "", isActive: true, pipelineId: null });
   const [err, setErr] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const cur = data?.docs.find((d) => d.id === sel) ?? null;
 
   useEffect(() => { if (!sel && data?.docs[0]) setSel(data.docs[0].id); }, [data, sel]);
-  useEffect(() => { if (cur) setForm({ title: cur.title, category: cur.category, content: cur.content, isActive: cur.isActive }); }, [cur?.id, cur?.updatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (cur) setForm({ title: cur.title, category: cur.category, content: cur.content, isActive: cur.isActive, pipelineId: cur.pipelineId }); }, [cur?.id, cur?.updatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const done = () => { setErr(null); qc.invalidateQueries({ queryKey: ["knowledge"] }); };
   const onError = (e: Error) => setErr(e.message);
@@ -63,7 +63,7 @@ export function KnowledgePanel() {
   }, [data]);
 
   if (!data) return <p className="text-sm text-slate-500">Carregando…</p>;
-  const dirty = cur && (form.title !== cur.title || form.category !== cur.category || form.content !== cur.content || form.isActive !== cur.isActive);
+  const dirty = cur && (form.title !== cur.title || form.category !== cur.category || form.content !== cur.content || form.isActive !== cur.isActive || form.pipelineId !== cur.pipelineId);
 
   return (
     <div className="space-y-4">
@@ -97,19 +97,26 @@ export function KnowledgePanel() {
             {data.docs.map((d) => (
               <button key={d.id} onClick={() => setSel(d.id)} className={`block w-full p-3 text-left text-sm hover:bg-slate-50 ${d.id === sel ? "bg-secondary/10" : ""}`}>
                 <p className="flex items-center gap-1 font-medium">{d.title}{!d.isActive && <Badge color="#94A3B8">inativo</Badge>}</p>
-                <p className="text-xs text-slate-500">{data.categories[d.category] ?? d.category} · {(d.content.length / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil caracteres</p>
+                <p className="text-xs text-slate-500">{data.categories[d.category] ?? d.category}{d.pipelineId && ` · ${data.pipelines.find((p) => p.id === d.pipelineId)?.name ?? "funil"}`} · {(d.content.length / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil caracteres</p>
               </button>
             ))}
           </Card>
 
           {cur && (
             <Card className="space-y-3 p-4">
-              <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
+              <div className="grid gap-3 sm:grid-cols-[1fr_200px_200px]">
                 <div><Label>Título</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
                 <div>
                   <Label>Categoria</Label>
                   <Select className="w-full" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
                     {Object.entries(data.categories).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </Select>
+                </div>
+                <div>
+                  <Label>Usar no funil</Label>
+                  <Select className="w-full" value={form.pipelineId ?? ""} onChange={(e) => setForm({ ...form, pipelineId: e.target.value || null })}>
+                    <option value="">Todos os funis</option>
+                    {data.pipelines.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </Select>
                 </div>
               </div>

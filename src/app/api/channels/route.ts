@@ -10,7 +10,7 @@ export const GET = route(async (_req, { auth }) =>
   withTenant(auth.tenantId, async (tx) => {
     const rows = await tx.select().from(channelConnections).where(eq(channelConnections.tenantId, auth.tenantId));
     // nunca devolve tokens completos ao navegador
-    return rows.map((r) => ({ ...r, config: { webhookToken: r.config.webhookToken, hasAccessToken: !!r.config.pageAccessToken } }));
+    return rows.map((r) => ({ ...r, routing: r.routing ?? {}, config: { webhookToken: r.config.webhookToken, hasAccessToken: !!r.config.pageAccessToken } }));
   }),
   { minRole: "ADMIN" },
 );

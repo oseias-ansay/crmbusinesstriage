@@ -1,7 +1,7 @@
 /** GET documentos da base de conhecimento · POST novo documento. */
 import { asc, eq } from "drizzle-orm";
 import { withTenant } from "@/db";
-import { knowledgeDocs } from "@/db/schema";
+import { knowledgeDocs, pipelines } from "@/db/schema";
 import { parseBody, route } from "@/lib/api";
 import { CATEGORIES, FULL_LIMIT, docSchema } from "@/lib/copilot/knowledge";
 
@@ -9,7 +9,8 @@ import { CATEGORIES, FULL_LIMIT, docSchema } from "@/lib/copilot/knowledge";
 export const GET = route(async (_req, { auth }) =>
   withTenant(auth.tenantId, async (tx) => {
     const docs = await tx.select().from(knowledgeDocs).where(eq(knowledgeDocs.tenantId, auth.tenantId)).orderBy(asc(knowledgeDocs.createdAt));
-    return { docs, categories: CATEGORIES, fullLimit: FULL_LIMIT };
+    const pipes = await tx.select({ id: pipelines.id, name: pipelines.name }).from(pipelines).where(eq(pipelines.tenantId, auth.tenantId)).orderBy(asc(pipelines.order));
+    return { docs, categories: CATEGORIES, fullLimit: FULL_LIMIT, pipelines: pipes };
   }),
 { minRole: "MANAGER" });
 

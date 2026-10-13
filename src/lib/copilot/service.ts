@@ -11,7 +11,7 @@
  *  devolve a mensagem sugerida num bloco ```whatsapp``` (o vendedor revisa
  *  e decide se envia). Conta no mesmo limite diário de IA do tenant.
  */
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, or } from "drizzle-orm";
 import { withTenant } from "@/db";
 import { contacts, copilotMessages, deals, dealTags, knowledgeDocs, messages, notes, organizations, pipelines, stages, tags, tenants, users } from "@/db/schema";
 import { ApiError } from "@/lib/api";
@@ -25,7 +25,11 @@ export const QUICK_ACTIONS: Record<string, { label: string; prompt: string }> = 
   oferta: { label: "Qual oferta indicar?", prompt: "Com base no perfil do cliente (porte, faturamento, principal dor, prazo) e na base, qual produto/plano devo oferecer, por qual preço e condição, e por quê?" },
 };
 
-const HISTORY = 12; // últimas mensagens do copiloto reaproveitadas como memória
+const HISTORY = 12;
+
+/** Documentos ativos que valem para o funil do negócio (sem funil = vale para todos). */
+const docsFor = (tenantId: string, pipelineId: string | null | undefined) =>
+  and(eq(knowledgeDocs.tenantId, tenantId), eq(knowledgeDocs.isActive, true), pipelineId ? or(isNull(knowledgeDocs.pipelineId), eq(knowledgeDocs.pipelineId, pipelineId)) : undefined); // últimas mensagens do copiloto reaproveitadas como memória
 
 const RULES = (empresa: string, temBase: boolean) =>
   [
@@ -109,7 +113,8 @@ export async function copilotHistory(tenantId: string, dealId: string) {
       .where(and(eq(copilotMessages.dealId, dealId), eq(copilotMessages.tenantId, tenantId)))
       .orderBy(asc(copilotMessages.createdAt))
       .limit(200);
-    const docs = await tx.select({ id: knowledgeDocs.id, title: knowledgeDocs.title, content: knowledgeDocs.content }).from(knowledgeDocs).where(and(eq(knowledgeDocs.tenantId, tenantId), eq(knowledgeDocs.isActive, true))).orderBy(asc(knowledgeDocs.createdAt));
+    const [dl] = await tx.select({ pipelineId: deals.pipelineId }).from(deals).where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId))).limit(1);
+    const docs = await tx.select({ id: knowledgeDocs.id, title: knowledgeDocs.title, content: knowledgeDocs.content }).from(knowledgeDocs).where(docsFor(tenantId, dl?.pipelineId)).orderBy(asc(knowledgeDocs.createdAt));
     return {
       messages: list,
       base: { docs: docs.length, chars: docs.reduce((s, d) => s + d.content.length, 0), refs: docs.map((d, i) => ({ n: i + 1, id: d.id, title: d.title })) },
@@ -126,10 +131,11 @@ export async function askCopilot(o: { tenantId: string; userId: string; dealId: 
 
   const base = await withTenant(o.tenantId, async (tx) => {
     const [t] = await tx.select({ name: tenants.name, settings: tenants.settings }).from(tenants).where(eq(tenants.id, o.tenantId)).limit(1);
+    const [dl] = await tx.select({ pipelineId: deals.pipelineId }).from(deals).where(and(eq(deals.id, o.dealId), eq(deals.tenantId, o.tenantId))).limit(1);
     const docs = await tx
       .select({ id: knowledgeDocs.id, title: knowledgeDocs.title, category: knowledgeDocs.category, content: knowledgeDocs.content })
       .from(knowledgeDocs)
-      .where(and(eq(knowledgeDocs.tenantId, o.tenantId), eq(knowledgeDocs.isActive, true)))
+      .where(docsFor(o.tenantId, dl?.pipelineId))
       .orderBy(asc(knowledgeDocs.createdAt));
     const hist = await tx
       .select({ role: copilotMessages.role, content: copilotMessages.content })
