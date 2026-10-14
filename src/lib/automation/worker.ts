@@ -6,6 +6,7 @@
  * Usa FOR UPDATE SKIP LOCKED → seguro mesmo com várias instâncias.
  * Em escala maior, troque por BullMQ + Redis.
  */
+import { meetingHousekeeping } from "@/lib/meetings/process";
 import { pickWhatsappConversation } from "@/lib/services/routing";
 import { and, eq, isNull, lte, sql } from "drizzle-orm";
 import { withAdmin } from "@/db";
@@ -75,6 +76,7 @@ export async function processScheduledJobs(batch = 20) {
       await withAdmin((tx) => tx.update(scheduledJobs).set({ doneAt: null, lastError: String(e) }).where(eq(scheduledJobs.id, job.id)));
     }
   }
+  await meetingHousekeeping().catch((e) => console.error("[meeting] housekeeping", e));
   return jobs.length;
 }
 

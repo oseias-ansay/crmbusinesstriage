@@ -116,6 +116,9 @@ export type TenantSettings = {
     model?: string;
     dailyLimit?: number; // análises por dia (disjuntor de custo)
     minConfidence?: number; // 0–1
+    transcribeKey?: string; // OpenAI (transcrição de áudio das reuniões); vazio = OPENAI_API_KEY do servidor
+    transcribeModel?: string; // padrão whisper-1
+    recordingRetentionDays?: number; // apaga o áudio/vídeo depois de N dias (padrão 90); transcrição e resumo ficam
   };
   /** Google Agenda (OAuth da conta da empresa) */
   google?: {
@@ -544,7 +547,9 @@ export type AutomationAction =
   | { type: "ASSIGN_USER"; params: { userId?: string; strategy?: "ROUND_ROBIN" }; delayMinutes?: number }
   | { type: "ADD_TAG"; params: { tag: string }; delayMinutes?: number }
   | { type: "MOVE_STAGE"; params: { stageId: string }; delayMinutes?: number }
-  | { type: "WEBHOOK"; params: { url: string }; delayMinutes?: number };
+  | { type: "WEBHOOK"; params: { url: string }; delayMinutes?: number }
+  // cria um NOVO card para o mesmo contato em outro funil (o card ganho continua ganho)
+  | { type: "CREATE_DEAL"; params: { stageId: string; title?: string; tags?: string; copyValue?: string; taskTitle?: string; taskDueHours?: number }; delayMinutes?: number };
 
 export type AutomationConditions = {
   pipelineId?: string;
@@ -835,6 +840,50 @@ export const liveRegistrations = pgTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex().on(t.liveId, t.contactId)],
+);
+
+// ───────────────────────────── REUNIÕES GRAVADAS ─────────────────────────────
+
+export type MeetingSummary = {
+  resumo?: string;
+  perfil?: string;
+  dores?: string[];
+  objecoes?: { objecao: string; resposta?: string; tratada?: boolean }[];
+  combinado?: string[];
+  proximoPasso?: string;
+  tarefas?: { titulo: string; prazoDias?: number }[];
+  avaliacao?: { nota?: number; pontosFortes?: string[]; melhorar?: string[]; etapas?: Record<string, number> };
+  temperatura?: "quente" | "morno" | "frio";
+};
+
+/** Gravação (ou transcrição) de atendimento online ligada ao negócio + resumo da IA. */
+export const meetingRecords = pgTable(
+  "meeting_records",
+  {
+    id: id(),
+    tenantId: tenantRef(),
+    dealId: uuid()
+      .notNull()
+      .references(() => deals.id, { onDelete: "cascade" }),
+    contactId: uuid().references(() => contacts.id, { onDelete: "set null" }),
+    userId: uuid().references(() => users.id, { onDelete: "set null" }),
+    title: text().notNull(),
+    fileName: text().notNull(),
+    filePath: text(), // relativo ao UPLOAD_DIR; null depois de apagado pela retenção
+    mimeType: text(),
+    sizeBytes: integer().notNull().default(0),
+    durationSec: integer(),
+    status: text().notNull().default("PENDING"), // PENDING | TRANSCRIBING | ANALYZING | DONE | FAILED
+    error: text(),
+    transcript: text(),
+    summary: jsonb().$type<MeetingSummary>(),
+    tasksCreated: integer().notNull().default(0),
+    consent: boolean().notNull().default(false), // cliente informado e de acordo com a gravação (LGPD)
+    retainUntil: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index().on(t.tenantId, t.dealId, t.createdAt), index().on(t.status)],
 );
 
 // ───────────────────────────── COPILOTO DE VENDAS ─────────────────────────────

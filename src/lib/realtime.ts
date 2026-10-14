@@ -14,6 +14,7 @@ import type { Server } from "socket.io";
 
 export type RealtimeEvent =
   | "deal:created"
+  | "meeting:updated"
   | "deal:updated"
   | "deal:moved"
   | "deal:deleted"

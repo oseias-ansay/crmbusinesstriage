@@ -13,7 +13,7 @@
  */
 import { and, asc, desc, eq, isNull, or } from "drizzle-orm";
 import { withTenant } from "@/db";
-import { contacts, copilotMessages, deals, dealTags, knowledgeDocs, messages, notes, organizations, pipelines, stages, tags, tenants, users } from "@/db/schema";
+import { contacts, copilotMessages, meetingRecords, deals, dealTags, knowledgeDocs, messages, notes, organizations, pipelines, stages, tags, tenants, users } from "@/db/schema";
 import { ApiError } from "@/lib/api";
 import { aiConfig, callMessages, consumeQuota, type ChatMsg } from "@/lib/ai/anthropic";
 import { buildKnowledge } from "./knowledge";
@@ -72,6 +72,23 @@ async function leadContext(tenantId: string, dealId: string) {
       .orderBy(desc(messages.timestamp))
       .limit(25);
 
+    const mt = await tx
+      .select({ title: meetingRecords.title, summary: meetingRecords.summary, createdAt: meetingRecords.createdAt })
+      .from(meetingRecords)
+      .where(and(eq(meetingRecords.dealId, dealId), eq(meetingRecords.status, "DONE")))
+      .orderBy(desc(meetingRecords.createdAt))
+      .limit(2);
+    const reunioes = mt
+      .map((r) => {
+        const s = r.summary ?? {};
+        return [
+          `- ${r.title} (${r.createdAt.toLocaleDateString("pt-BR")}): ${s.resumo ?? ""}`,
+          s.objecoes?.length ? `  Objeções: ${s.objecoes.map((o) => `${o.objecao}${o.tratada ? " (tratada)" : " (em aberto)"}`).join("; ")}` : "",
+          s.combinado?.length ? `  Combinado: ${s.combinado.join("; ")}` : "",
+          s.proximoPasso ? `  Próximo passo: ${s.proximoPasso}` : "",
+        ].filter(Boolean).join("\n");
+      })
+      .join("\n");
     const campos = { ...(row.contact?.customFields ?? {}), ...(row.deal.customFields ?? {}) } as Record<string, unknown>;
     const camposTxt = Object.entries(campos)
       .filter(([k, v]) => !k.startsWith("_") && v != null && v !== "")
@@ -95,6 +112,7 @@ async function leadContext(tenantId: string, dealId: string) {
         `- Contato: ${nome}${row.org ? ` (${row.org})` : ""} · responsável: ${row.owner ?? "ninguém"}`,
         tg.length ? `- Tags: ${tg.map((t) => t.name).join(", ")}` : "",
         camposTxt ? `RESPOSTAS E CAMPOS DO CLIENTE\n${camposTxt}` : "",
+        reunioes ? `REUNIÕES GRAVADAS (resumo da IA)\n${reunioes}` : "",
         ns.length ? `NOTAS INTERNAS (mais recentes)\n${ns.map((n) => `- ${n.content.slice(0, 300)}`).join("\n")}` : "",
         conversa ? `CONVERSA NO WHATSAPP (mais antiga → mais recente)\n${conversa}` : "Ainda não há conversa registrada com este cliente.",
       ]

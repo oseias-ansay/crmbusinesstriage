@@ -50,6 +50,13 @@
       "when": 1791918064954,
       "tag": "0006_routing",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791936644549,
+      "tag": "0007_meetings",
+      "breakpoints": true
     }
   ]
 }

@@ -11,7 +11,7 @@ import { GoogleCard } from "./google-card";
 
 type S = {
   meta: { enabled?: boolean; datasetId?: string; accessToken?: string; testEventCode?: string; onlyAdLeads?: boolean; wabaId?: string; hasToken?: boolean };
-  ai: { apiKey?: string; model?: string; dailyLimit?: number; minConfidence?: number; hasKey?: boolean; serverKey?: boolean };
+  ai: { apiKey?: string; model?: string; dailyLimit?: number; minConfidence?: number; hasKey?: boolean; serverKey?: boolean; transcribeKey?: string; transcribeModel?: string; recordingRetentionDays?: number; hasTranscribeKey?: boolean; serverTranscribeKey?: boolean };
   company: { razaoSocial?: string; cnpj?: string; endereco?: string; representante?: string; cpfRepresentante?: string; cidadeForo?: string };
 };
 
@@ -88,6 +88,18 @@ export function IntegrationsPanel() {
           <div className="md:col-span-2"><Label>Modelo</Label><Input value={a.model ?? ""} onChange={(e) => setA({ model: e.target.value })} placeholder="claude-haiku-4-5 (padrão: rápido e barato)" /></div>
         </div>
         <p className="text-xs text-slate-500">As últimas 30 mensagens da conversa são enviadas à Anthropic para análise; nada é guardado por ela para treino via API.</p>
+        <div className="rounded-lg bg-slate-50 p-3">
+          <p className="text-sm font-medium">Transcrição das reuniões gravadas</p>
+          <p className="mb-2 text-xs text-slate-500">
+            Para transformar o áudio das reuniões (aba Reuniões do card) em texto, usamos a API da OpenAI (cerca de US$ 0,006 por minuto ≈ R$ 1 por reunião de 30 min). O resumo e a avaliação continuam com a IA acima.
+            Sem chave, o card aceita só a transcrição já pronta (.txt, .vtt, .docx).
+          </p>
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="md:col-span-2"><Label>Chave da API OpenAI {a.hasTranscribeKey && <CheckCircle2 size={12} className="inline text-emerald-600" />}</Label><Input value={a.transcribeKey ?? ""} onChange={(e) => setA({ transcribeKey: e.target.value })} placeholder={a.serverTranscribeKey ? "usando a chave do servidor" : "sk-…"} /></div>
+            <div><Label>Modelo</Label><Input value={a.transcribeModel ?? ""} onChange={(e) => setA({ transcribeModel: e.target.value })} placeholder="whisper-1" /></div>
+            <div><Label>Apagar gravação após (dias)</Label><Input type="number" min={1} value={a.recordingRetentionDays ?? 90} onChange={(e) => setA({ recordingRetentionDays: Number(e.target.value) })} /></div>
+          </div>
+        </div>
         <Button onClick={() => save.mutate({ ai: a })} disabled={save.isPending}>Salvar IA</Button>
       </Card>
 

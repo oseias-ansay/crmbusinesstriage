@@ -25,6 +25,7 @@ import {
   dealTags,
   deals,
   scheduledJobs,
+  stages,
   tasks,
   tenants,
   users,
@@ -33,7 +34,7 @@ import {
 } from "@/db/schema";
 import { renderTemplate } from "@/lib/utils";
 import { pickNextAgent } from "@/lib/assignment";
-import { ensureTags, moveDeal } from "@/lib/services/deals";
+import { createDeal, ensureTags, moveDeal } from "@/lib/services/deals";
 import { sendOutbound } from "@/lib/services/messages";
 import { sendEmail } from "@/lib/channels/email";
 import { logActivity, notify } from "@/lib/activity";
@@ -206,6 +207,40 @@ async function perform(
         fireTrigger(tenantId, "DEAL_STAGE_CHANGED", { dealId: v.deal.id, stageId: action.params.stageId, pipelineId: res.deal.pipelineId, depth: (ctx.depth ?? 0) + 1 });
       }
       return { stageId: action.params.stageId };
+    }
+    case "CREATE_DEAL": {
+      if (!v.deal || !v.contact) return { skipped: "sem negócio/contato" };
+      const [st] = await tx.select({ id: stages.id, pipelineId: stages.pipelineId }).from(stages).where(and(eq(stages.id, action.params.stageId), eq(stages.tenantId, tenantId))).limit(1);
+      if (!st) return { skipped: "etapa de destino não existe mais" };
+      // não duplica: o contato já tem card aberto nesse funil
+      const [open] = await tx.select({ id: deals.id }).from(deals).where(and(eq(deals.contactId, v.contact.id), eq(deals.pipelineId, st.pipelineId), eq(deals.status, "OPEN"))).limit(1);
+      if (open) return { skipped: "contato já tem card aberto nesse funil", dealId: open.id };
+      const tags = (action.params.tags ?? "").split(",").map((x) => r(x).trim()).filter(Boolean);
+      const nd = await createDeal(tx, tenantId, null, {
+        title: r(action.params.title || "{{deal.title}}"),
+        pipelineId: st.pipelineId,
+        stageId: st.id,
+        value: action.params.copyValue === "0" ? 0 : Number(v.deal.value ?? 0),
+        recurring: v.deal.recurring,
+        userId: v.deal.userId,
+        contactId: v.contact.id,
+        source: `automação: ${v.deal.title}`.slice(0, 120),
+        tags,
+      });
+      if (action.params.taskTitle && v.deal.userId) {
+        await tx.insert(tasks).values({
+          tenantId,
+          userId: v.deal.userId,
+          dealId: nd.id,
+          contactId: v.contact.id,
+          title: r(action.params.taskTitle),
+          type: "OTHER",
+          dueDate: new Date(Date.now() + (Number(action.params.taskDueHours) || 24) * 3_600_000),
+        });
+      }
+      await logActivity(tx, { tenantId, type: "AUTOMATION", summary: `Card criado no próximo funil a partir de "${v.deal.title}"`, dealId: nd.id, contactId: v.contact.id, meta: { fromDealId: v.deal.id } });
+      emitToTenant(tenantId, "deal:created", { id: nd.id });
+      return { dealId: nd.id };
     }
     case "WEBHOOK": {
       const res = await fetch(action.params.url, {

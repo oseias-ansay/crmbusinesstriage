@@ -84,7 +84,7 @@ export const brandingSchema = z.object({
 });
 
 export const automationActionSchema = z.object({
-  type: z.enum(["SEND_WHATSAPP", "SEND_EMAIL", "CREATE_TASK", "ASSIGN_USER", "ADD_TAG", "MOVE_STAGE", "WEBHOOK"]),
+  type: z.enum(["SEND_WHATSAPP", "SEND_EMAIL", "CREATE_TASK", "ASSIGN_USER", "ADD_TAG", "MOVE_STAGE", "WEBHOOK", "CREATE_DEAL"]),
   params: z.record(z.any()),
   delayMinutes: z.coerce.number().int().min(0).optional(),
 });

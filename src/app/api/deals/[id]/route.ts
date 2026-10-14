@@ -85,7 +85,7 @@ export const PATCH = route<P>(async (req, { auth, params }) => {
 
   emitToTenant(auth.tenantId, "deal:updated", deal);
   if (deal.status !== prevStatus) {
-    if (deal.status === "WON") fireTrigger(auth.tenantId, "DEAL_WON", { dealId: deal.id, value: Number(deal.value) });
+    if (deal.status === "WON") fireTrigger(auth.tenantId, "DEAL_WON", { dealId: deal.id, contactId: deal.contactId ?? undefined, pipelineId: deal.pipelineId, stageId: deal.stageId, value: Number(deal.value) });
     if (deal.status === "LOST") fireTrigger(auth.tenantId, "DEAL_LOST", { dealId: deal.id });
   }
   return deal;

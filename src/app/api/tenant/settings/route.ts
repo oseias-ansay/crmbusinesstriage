@@ -27,6 +27,9 @@ const schema = z.object({
       model: z.string().trim().max(80).optional(),
       dailyLimit: z.coerce.number().int().min(1).max(10000).optional(),
       minConfidence: z.coerce.number().min(0.3).max(1).optional(),
+      transcribeKey: z.string().trim().max(300).optional(),
+      transcribeModel: z.string().trim().max(80).optional(),
+      recordingRetentionDays: z.coerce.number().int().min(1).max(3650).optional(),
     })
     .optional(),
   company: z
@@ -44,7 +47,7 @@ const schema = z.object({
 function view(s: TenantSettings) {
   return {
     meta: { ...s.meta, accessToken: mask(s.meta?.accessToken), hasToken: !!s.meta?.accessToken },
-    ai: { ...s.ai, apiKey: mask(s.ai?.apiKey), hasKey: !!s.ai?.apiKey, serverKey: !!process.env.ANTHROPIC_API_KEY },
+    ai: { ...s.ai, apiKey: mask(s.ai?.apiKey), hasKey: !!s.ai?.apiKey, serverKey: !!process.env.ANTHROPIC_API_KEY, transcribeKey: mask(s.ai?.transcribeKey), hasTranscribeKey: !!s.ai?.transcribeKey, serverTranscribeKey: !!process.env.OPENAI_API_KEY },
     company: s.company ?? {},
   };
 }
@@ -66,7 +69,7 @@ export const PATCH = route(async (req, { auth }) => {
     const next: TenantSettings = {
       ...s,
       ...(body.meta && { meta: { ...s.meta, ...body.meta, accessToken: keep(body.meta.accessToken, s.meta?.accessToken) } }),
-      ...(body.ai && { ai: { ...s.ai, ...body.ai, apiKey: keep(body.ai.apiKey, s.ai?.apiKey) } }),
+      ...(body.ai && { ai: { ...s.ai, ...body.ai, apiKey: keep(body.ai.apiKey, s.ai?.apiKey), transcribeKey: keep(body.ai.transcribeKey, s.ai?.transcribeKey) } }),
       ...(body.company && { company: { ...s.company, ...body.company } }),
     };
     await tx.update(tenants).set({ settings: next }).where(eq(tenants.id, auth.tenantId));

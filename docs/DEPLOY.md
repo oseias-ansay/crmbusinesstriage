@@ -230,6 +230,23 @@ cd /opt/apps/triage-crm && docker compose down -v && rm -f /etc/cron.d/triage-cr
 - Cada número tem a sua conversa; respostas, lembretes e mensagens de etapa saem pelo número do negócio. No Inbox, filtro "Todos os números".
 - Base de conhecimento: campo **"Usar no funil"** — o Copiloto de um card só usa documentos do funil dele (ou de todos).
 
+## 7.3 Jornada depois da venda
+
+- Ação de automação **"Criar card em outro funil"**: cria um card NOVO para o mesmo contato (o card ganho continua ganho, sem distorcer conversão e receita). Não duplica se o contato já tem card aberto naquele funil.
+- **Automações → Jornada pós-venda (modelo)** cria:
+  - Consultoria ganha (Vendas) → Triagem Business / Execução do Diagnóstico, tag Consultoria, tarefa de coletar documentos;
+  - CRM ganho (Venda de CRM) → Onboarding, tag CRM, tarefa de kickoff;
+  - última etapa da Execução ("Relatório entregue") → Pós-Venda, tag Consultoria;
+  - última etapa do Onboarding ("Ativo") → Pós-Venda, tag CRM.
+- No Pós-Venda, filtre por tag para separar consultoria e CRM.
+
+## 7.4 Reuniões gravadas (Meet/Zoom) com resumo automático
+
+- No card, aba **Reuniões**: envie a gravação (áudio ou vídeo, até 500 MB) ou só a transcrição (.txt, .vtt, .srt, .docx, .pdf).
+- O CRM extrai o áudio (ffmpeg, já incluído na imagem Docker), transcreve (OpenAI Whisper) e o Claude gera resumo, dores, objeções, combinados, próximo passo, temperatura do lead e avaliação do atendimento. As tarefas combinadas são criadas na aba Tarefas, e o Copiloto passa a usar os resumos.
+- **Configuração:** Configurações → Integrações → IA → Transcrição: cole a chave da OpenAI (fica mascarada), escolha o modelo e o prazo de retenção da gravação. Sem chave, envie a transcrição em texto (Meet e Zoom geram).
+- **LGPD:** o envio exige marcar que o cliente foi avisado e concordou com a gravação. As gravações ficam fora da pasta pública, só baixam com login e são apagadas ao fim do prazo de retenção (o resumo e a transcrição continuam).
+
 ## 8. Canais
 
 - **WhatsApp — número exclusivo do CRM:** em Configurações → Canais, conecte o nome da instância e

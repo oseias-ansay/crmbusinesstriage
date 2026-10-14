@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Tabs from "@radix-ui/react-tabs";
-import { ArrowDown, Plus, Power, Trash2, Zap } from "lucide-react";
+import { ArrowDown, Plus, Power, Trash2, Wand2, Zap } from "lucide-react";
 import { api } from "@/lib/fetcher";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,17 @@ const ACTIONS: Record<string, { label: string; fields: { key: string; label: str
   ADD_TAG: { label: "Adicionar tag", fields: [{ key: "tag", label: "Tag" }] },
   MOVE_STAGE: { label: "Mover para etapa", fields: [{ key: "stageId", label: "Etapa" }] },
   WEBHOOK: { label: "Chamar webhook (n8n/Make)", fields: [{ key: "url", label: "URL" }] },
+  CREATE_DEAL: {
+    label: "Criar card em outro funil",
+    fields: [
+      { key: "stageId", label: "Funil › etapa do card novo" },
+      { key: "title", label: "Título (padrão: {{deal.title}})" },
+      { key: "tags", label: "Tags (separadas por vírgula)" },
+      { key: "taskTitle", label: "Tarefa para o responsável (opcional)" },
+      { key: "taskDueHours", label: "Prazo da tarefa (horas)", type: "number" },
+      { key: "copyValue", label: "Copiar o valor? (1 = sim, 0 = não)" },
+    ],
+  },
 };
 
 export function AutomationsView() {
@@ -47,6 +58,12 @@ export function AutomationsView() {
   const { data: list = [] } = useQuery({ queryKey: ["automations"], queryFn: () => api<Automation[]>("/api/automations") });
   const { data: pipelines = [] } = useQuery({ queryKey: ["pipelines"], queryFn: () => api<Pipeline[]>("/api/pipelines") });
   const [editing, setEditing] = useState<Partial<Automation> | null>(null);
+  const [journeyMsg, setJourneyMsg] = useState<string | null>(null);
+  const journey = useMutation({
+    mutationFn: () => api<{ notes: string[] }>("/api/automations/journey-template", { method: "POST" }),
+    onSuccess: (r) => { setJourneyMsg(r.notes.join(" ")); qc.invalidateQueries({ queryKey: ["automations"] }); },
+    onError: (e: Error) => setJourneyMsg(e.message),
+  });
   const allStages = pipelines.flatMap((p) => p.stages.map((s) => ({ ...s, label: `${p.name} › ${s.name}` })));
 
   const toggle = useMutation({
@@ -75,7 +92,11 @@ export function AutomationsView() {
         </div>
 
         <Tabs.Content value="rules" className="mt-4 space-y-3">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {journeyMsg && <p className="mr-auto max-w-2xl text-xs text-slate-600">{journeyMsg}</p>}
+            <Button variant="outline" disabled={journey.isPending} onClick={() => confirm("Criar as automações da jornada pós-venda (consultoria e CRM)?") && journey.mutate()}>
+              <Wand2 size={16} /> Jornada pós-venda (modelo)
+            </Button>
             <Button onClick={() => setEditing({ name: "", triggerType: "DEAL_CREATED", conditions: {}, actionsJson: [{ type: "SEND_WHATSAPP", params: { text: "" } }], isActive: true })}>
               <Plus size={16} /> Nova automação
             </Button>
@@ -87,6 +108,7 @@ export function AutomationsView() {
                 <p className="font-medium">{a.name}</p>
                 <p className="text-xs text-slate-500">
                   Quando <b>{TRIGGERS[a.triggerType]}</b>
+                  {a.conditions.pipelineId && <> no funil <b>{pipelines.find((p) => p.id === a.conditions.pipelineId)?.name}</b></>}
                   {a.conditions.stageId && <> em <b>{allStages.find((s) => s.id === a.conditions.stageId)?.label}</b></>}
                   {a.conditions.tagName && <> com tag <b>{a.conditions.tagName}</b></>} → {a.actionsJson.map((x) => ACTIONS[x.type]?.label).join(", ")}
                 </p>

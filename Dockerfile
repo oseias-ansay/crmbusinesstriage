@@ -28,7 +28,8 @@ COPY --from=build /app/public ./public
 COPY package.json next.config.mjs tsconfig.json server.ts ./
 COPY src ./src
 COPY drizzle ./drizzle
-RUN mkdir -p /data/uploads /app/.next/cache && chown node:node /data/uploads /app/.next/cache
+# ffmpeg: extrai/comprime o áudio das reuniões gravadas antes da transcrição
+RUN apk add --no-cache ffmpeg && mkdir -p /data/uploads /app/.next/cache && chown node:node /data/uploads /app/.next/cache
 USER node
 EXPOSE 3100
 HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=5 \
