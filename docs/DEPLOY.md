@@ -247,6 +247,12 @@ cd /opt/apps/triage-crm && docker compose down -v && rm -f /etc/cron.d/triage-cr
 - **Configuração:** Configurações → Integrações → IA → Transcrição: cole a chave da OpenAI (fica mascarada), escolha o modelo e o prazo de retenção da gravação. Sem chave, envie a transcrição em texto (Meet e Zoom geram).
 - **LGPD:** o envio exige marcar que o cliente foi avisado e concordou com a gravação. As gravações ficam fora da pasta pública, só baixam com login e são apagadas ao fim do prazo de retenção (o resumo e a transcrição continuam).
 
+## 7.5 Conversa dentro do card
+
+- Aba **Conversa** no card: o mesmo chat do Inbox (texto, anexo, áudio, respostas rápidas com "/", nota interna), em tempo real, com o número de não lidas no nome da aba.
+- Mostra as conversas do contato (a do negócio primeiro). Se ainda não há conversa de WhatsApp, o botão **Iniciar conversa no WhatsApp** cria uma pelo número escolhido (sugere o número ligado ao funil do card); o robô não entra nessa conversa.
+- Visibilidade igual à do Inbox: o agente vê as conversas dele e as da fila, e todas as do negócio de que é responsável.
+
 ## 8. Canais
 
 - **WhatsApp — número exclusivo do CRM:** em Configurações → Canais, conecte o nome da instância e

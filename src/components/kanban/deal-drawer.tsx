@@ -8,9 +8,10 @@ import { useState } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle2, Circle, FileText, Paperclip, Pencil, Sparkles, ThumbsDown, Trophy } from "lucide-react";
+import { CheckCircle2, Circle, MessageCircle, FileText, Paperclip, Pencil, Sparkles, ThumbsDown, Trophy } from "lucide-react";
 import { CopilotPanel } from "./copilot-panel";
 import { MeetingsPanel } from "./meetings-panel";
+import { DealChatPanel, useDealChats } from "./deal-chat-panel";
 import { EditDealForm } from "./edit-deal-form";
 import Link from "next/link";
 import { api } from "@/lib/fetcher";
@@ -35,7 +36,7 @@ type Deal360 = {
   messages: { id: string; content: string; senderType: string; channel: string; timestamp: string }[];
 };
 
-const tabCls = "border-b-2 border-transparent px-3 py-2 text-sm text-slate-500 data-[state=active]:border-primary data-[state=active]:font-medium data-[state=active]:text-slate-900";
+const tabCls = "shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm text-slate-500 data-[state=active]:border-primary data-[state=active]:font-medium data-[state=active]:text-slate-900";
 
 export function DealDrawer({ dealId, onClose }: { dealId: string | null; onClose: () => void }) {
   const qc = useQueryClient();
@@ -116,8 +117,9 @@ export function DealDrawer({ dealId, onClose }: { dealId: string | null; onClose
           </dl>
 
           <Tabs.Root defaultValue="timeline">
-            <Tabs.List className="flex border-b">
+            <Tabs.List className="flex overflow-x-auto border-b [scrollbar-width:none]">
               <Tabs.Trigger value="timeline" className={tabCls}>Linha do tempo</Tabs.Trigger>
+              <Tabs.Trigger value="chat" className={cn(tabCls, "flex items-center gap-1")}><MessageCircle size={13} className="text-emerald-600" /> Conversa<ChatUnread dealId={d.id} /></Tabs.Trigger>
               <Tabs.Trigger value="copilot" className={cn(tabCls, "flex items-center gap-1")}><Sparkles size={13} className="text-secondary" /> Copiloto</Tabs.Trigger>
               <Tabs.Trigger value="meetings" className={tabCls}>Reuniões</Tabs.Trigger>
               <Tabs.Trigger value="notes" className={tabCls}>Notas ({d.notes.length})</Tabs.Trigger>
@@ -138,6 +140,10 @@ export function DealDrawer({ dealId, onClose }: { dealId: string | null; onClose
                     </li>
                   ))}
               </ol>
+            </Tabs.Content>
+
+            <Tabs.Content value="chat">
+              <DealChatPanel dealId={d.id} />
             </Tabs.Content>
 
             <Tabs.Content value="copilot">
@@ -236,4 +242,11 @@ function LossForm({ onConfirm, onCancel }: { onConfirm: (reasonId: string, note:
       </div>
     </div>
   );
+}
+
+/** Não lidas das conversas do contato, no rótulo da aba Conversa. */
+function ChatUnread({ dealId }: { dealId: string }) {
+  const { data } = useDealChats(dealId);
+  const n = data?.conversations.reduce((s, c) => s + c.unreadCount, 0) ?? 0;
+  return n > 0 ? <span className="ml-1 rounded-full bg-secondary px-1.5 text-[10px] font-bold text-secondary-foreground">{n}</span> : null;
 }

@@ -21,14 +21,14 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 
-type Channel = "WHATSAPP" | "INSTAGRAM" | "EMAIL" | "INTERNAL" | "WEBCHAT";
-type Conv = {
+export type Channel = "WHATSAPP" | "INSTAGRAM" | "EMAIL" | "INTERNAL" | "WEBCHAT";
+export type Conv = {
   id: string; channel: Channel; status: "OPEN" | "PENDING" | "RESOLVED"; unreadCount: number; lastMessageAt: string; lastMessagePreview: string | null;
   assignedToId: string | null; assignedToName: string | null; dealId: string | null; dealTitle: string | null;
   connectionId: string | null; connectionName: string | null;
   contact: { id: string; name: string; phone: string | null; email: string | null };
 };
-type Msg = {
+export type Msg = {
   id: string; conversationId: string; senderType: "CONTACT" | "USER" | "BOT" | "SYSTEM"; type: "TEXT" | "IMAGE" | "AUDIO" | "VIDEO" | "DOCUMENT";
   content: string; mediaUrl: string | null; status: string; isInternalNote: boolean; timestamp: string; userName?: string | null;
 };
@@ -43,7 +43,7 @@ const CHANNEL_ICON: Record<Channel, { icon: typeof Mail; color: string; label: s
   WEBCHAT: { icon: MessageCircle, color: "#8B5CF6", label: "Webchat" },
 };
 
-function ChannelBadge({ channel }: { channel: Channel }) {
+export function ChannelBadge({ channel }: { channel: Channel }) {
   const c = CHANNEL_ICON[channel];
   return <c.icon size={14} style={{ color: c.color }} aria-label={c.label} />;
 }
@@ -204,7 +204,8 @@ export function InboxView({ me }: { me: string }) {
   );
 }
 
-function ChatPane({ conv, me }: { conv: Conv; me: string }) {
+/** Chat de uma conversa — usado no Inbox e, em modo compacto, na aba Conversa do card. */
+export function ChatPane({ conv, me, compact = false }: { conv: Conv; me: string; compact?: boolean }) {
   const qc = useQueryClient();
   const socket = useSocket();
   const key = ["messages", conv.id];
@@ -216,9 +217,11 @@ function ChatPane({ conv, me }: { conv: Conv; me: string }) {
   const [recording, setRecording] = useState<MediaRecorder | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
-  // chaves: no Chrome novo scrollIntoView devolve uma Promise, e o React a trataria como função de limpeza
+  // rola só a lista de mensagens (scrollIntoView rolaria também o card/página em volta).
+  // Chaves no efeito: sem retorno implícito (o React trataria o retorno como limpeza).
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = endRef.current?.parentElement;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [msgs.length]);
 
   useSocketEvent(
@@ -276,11 +279,13 @@ function ChatPane({ conv, me }: { conv: Conv; me: string }) {
   }
 
   return (
-    <section className="flex min-h-0 flex-col bg-slate-50">
+    <section className="flex h-full min-h-0 flex-col bg-slate-50">
       <header className="flex items-center gap-3 border-b bg-white px-4 py-3">
         <ChannelBadge channel={conv.channel} />
         <p className="font-medium">{conv.contact.name}</p>
         <span className="text-xs text-slate-500">{conv.assignedToName ? `com ${conv.assignedToName}` : "sem responsável"}</span>
+        {compact && conv.connectionName && <span className="truncate text-xs text-slate-400">· {conv.connectionName}</span>}
+        {compact && <Link href={`/inbox?c=${conv.id}`} className="ml-auto shrink-0 text-xs text-primary underline">Abrir no Inbox</Link>}
       </header>
 
       <div className="scroll-thin flex-1 space-y-2 overflow-y-auto p-4">
@@ -290,7 +295,8 @@ function ChatPane({ conv, me }: { conv: Conv; me: string }) {
             <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
               <div
                 className={cn(
-                  "max-w-[70%] rounded-2xl px-3 py-2 text-sm shadow-sm",
+                  compact ? "max-w-[85%]" : "max-w-[70%]",
+                  "rounded-2xl px-3 py-2 text-sm shadow-sm",
                   m.isInternalNote ? "border border-amber-300 bg-amber-50" : mine ? "bg-primary text-primary-foreground" : "bg-white",
                 )}
               >
